@@ -1,17 +1,23 @@
 services:
   vllm:
-    image: vllm/vllm-openai:latest
+    # latest (0.29) exige UVA indisponivel no WSL; 0.8.x tem engine V0
+    image: vllm/vllm-openai:v0.8.5
     container_name: vllm-openai
     ipc: host
 
     command: >
-      --model Qwen/Qwen2.5-1.5B-Instruct
+      --model Qwen/Qwen2.5-VL-3B-Instruct-AWQ
       --download-dir /models
+      --served-model-name Qwen/Qwen2.5-VL-3B-Instruct-AWQ
       --host 0.0.0.0
-      --port 8008
-      --gpu-memory-utilization 0.50
-      --max-model-len 1024
+      --port 8000
+      --dtype half
+      --max-model-len 2048
       --max-num-seqs 1
+      --gpu-memory-utilization 0.82
+      --limit-mm-per-prompt image=1,video=0
+      --mm-processor-kwargs '{"max_pixels":262144}'
+      --swap-space 1
       --enforce-eager
 
     shm_size: "8gb"
@@ -27,8 +33,18 @@ services:
     volumes:
       - E:/vllm-server/models:/models
 
+    # Reutiliza as credenciais locais do assistente; o vLLM nao faz chamadas
+    # para a OpenAI, mas a variavel fica disponivel no ambiente do container.
+    env_file:
+      - D:/kidney/.env
+
     ports:
-      - "8008:8008"
+      - "127.0.0.1:8000:8000"
 
     environment:
       HF_TOKEN: ${HF_TOKEN}
+      # WSL/Docker Desktop nao tem UVA: força engine V0
+      VLLM_USE_V1: "0"
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      CUDA_LAUNCH_BLOCKING: "1"
+      VLLM_ATTENTION_BACKEND: XFORMERS

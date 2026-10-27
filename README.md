@@ -2,16 +2,16 @@
 
 Este projeto sobe um servidor **vLLM** em Docker para executar um modelo do Hugging Face localmente, expondo uma API compatível com o padrão da OpenAI.
 
-No estado atual, o servidor roda o modelo:
+No estado atual, o servidor roda o modelo multimodal:
 
 ```text
-Qwen/Qwen2.5-1.5B-Instruct
+Qwen/Qwen2.5-VL-3B-Instruct-AWQ
 ```
 
 na porta local:
 
 ```text
-http://localhost:8008
+http://127.0.0.1:8000
 ```
 
 \---
@@ -51,18 +51,23 @@ models/
 ```yaml
 services:
   vllm:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.8.5
     container\_name: vllm-openai
     ipc: host
 
     command: >
-      --model Qwen/Qwen2.5-1.5B-Instruct
+      --model Qwen/Qwen2.5-VL-3B-Instruct-AWQ
       --download-dir /models
+      --served-model-name Qwen/Qwen2.5-VL-3B-Instruct-AWQ
       --host 0.0.0.0
-      --port 8008
-      --gpu-memory-utilization 0.50
-      --max-model-len 1024
+      --port 8000
+      --dtype half
+      --max-model-len 2048
       --max-num-seqs 1
+      --gpu-memory-utilization 0.82
+      --limit-mm-per-prompt image=1,video=0
+      --mm-processor-kwargs '{"max_pixels":262144}'
+      --swap-space 1
       --enforce-eager
 
     shm\_size: "8gb"
@@ -79,7 +84,7 @@ services:
       - E:/vllm-server/models:/models
 
     ports:
-      - "8008:8008"
+      - "127.0.0.1:8000:8000"
 
     environment:
       HF\_TOKEN: ${HF\_TOKEN}
@@ -485,7 +490,7 @@ docker compose down
 ## 7\. Testar se o servidor subiu
 
 ```bash
-curl http://localhost:8008/v1/models
+curl http://127.0.0.1:8000/v1/models
 ```
 
 Resposta esperada:
@@ -932,12 +937,12 @@ curl http://localhost:8008/v1/models
 
 ## 17\. Resumo
 
-Este setup executa o modelo `Qwen/Qwen2.5-1.5B-Instruct` localmente com vLLM, usando Docker e GPU NVIDIA.
+Este setup executa o modelo `Qwen/Qwen2.5-VL-3B-Instruct-AWQ` localmente com vLLM, usando Docker e GPU NVIDIA.
 
 A API fica disponível em:
 
 ```text
-http://localhost:8008/v1
+http://127.0.0.1:8000/v1
 ```
 
 O servidor é compatível com clientes OpenAI, mas roda localmente.
